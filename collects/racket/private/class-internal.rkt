@@ -67,7 +67,7 @@
            rename-super rename-inner inherit inherit/super inherit/inner inherit-field
            this this% super inner
            super-make-object super-instantiate super-new
-           inspect absent))
+           inspect absent abstract))
 
 
 ;;--------------------------------------------------------------------
@@ -124,7 +124,8 @@
                                 [inherit -inherit]
                                 [inherit-field -inherit-field]
                                 [inherit/super -inherit/super]
-                                [inherit/inner -inherit/inner])
+                                [inherit/inner -inherit/inner]
+                                [abstract -abstract])
 
 (define-for-syntax (rewrite-naming-class-keyword stx internal-id)
   (syntax-case stx ()
@@ -339,6 +340,7 @@
                 (quote-syntax -inherit/super)
                 (quote-syntax -inherit/inner)
                 (quote-syntax -rename-inner)
+                (quote-syntax -abstract)
                 (quote-syntax super)
                 (quote-syntax inner)
                 (quote-syntax this)
@@ -690,6 +692,7 @@
                                                 -public-final -override-final -augment-final
                                                 -pubment -overment -augment
                                                 -rename-super -inherit -inherit/super -inherit/inner -rename-inner
+                                                -abstract
                                                 -inspect)
                           [(form orig idp ...)
                            (and (identifier? (syntax form))
@@ -765,7 +768,8 @@
                                                                 -inherit
                                                                 -inherit/super
                                                                 -inherit/inner
-                                                                -inherit-field)))))
+                                                                -inherit-field
+                                                                -abstract)))))
                            (let ([form (syntax-e (syntax form))])
                              (for-each
                               (lambda (idp)
@@ -805,6 +809,8 @@
                            (bad "ill-formed inherit/inner clause" stx)]
                           [(-inherit-field . rest)
                            (bad "ill-formed inherit-field clause" stx)]
+                          [(-abstract . rest)
+                           (bad "ill-formed abstract clause" stx)]
                           [(kw idp ...)
                            (and (identifier? #'kw)
                                 (or (free-identifier=? #'-rename-super #'kw)
@@ -842,6 +848,7 @@
                                                              -inherit
                                                              -inherit/super
                                                              -inherit/inner
+                                                             -abstract
                                                              -rename-inner)))
                                     defn-and-exprs
                                     cons)]
@@ -903,6 +910,8 @@
                            (flatten pair (extract* (list (quote-syntax -inherit/super)) decls))]
                           [(inherit/inners)
                            (flatten pair (extract* (list (quote-syntax -inherit/inner)) decls))]
+                          [(abstracts)
+                           (flatten pair (extract* (list (quote-syntax -abstract)) decls))]
                           [(rename-inners)
                            (flatten pair (extract* (list (quote-syntax -rename-inner)) decls))])
               
@@ -956,11 +965,13 @@
                      [inherit-names (map car inherits)]
                      [inherit/super-names (map car inherit/supers)]
                      [inherit/inner-names (map car inherit/inners)]
+                     [abstract-names (map car abstracts)]
                      [rename-super-names (map car rename-supers)]
                      [rename-inner-names (map car rename-inners)]
                      [local-public-dynamic-names (map car (append publics overrides augrides
                                                                   overments augments
-                                                                  override-finals augment-finals))]
+                                                                  override-finals augment-finals
+                                                                  abstracts))]
                      [local-public-names (append (map car (append pubments public-finals))
                                                  local-public-dynamic-names)]
                      [local-method-names (append (map car privates) local-public-names)]
@@ -1089,6 +1100,7 @@
                       (check-dup "field" (map norm-init/field-eid (append normal-plain-fields normal-plain-init-fields))))
                     
                     ;; -- Check that private/public/override/augride are defined --
+                    ;; -- and that abstracts are *not* defined                   --
                     (let ([ht (make-hasheq)]
                           [stx-ht (make-hasheq)])
                       (for-each
@@ -1103,17 +1115,23 @@
                        defined-syntax-names)
                       (for-each
                        (lambda (pubovr-name)
-                         (let ([l (hash-ref ht (syntax-e pubovr-name) null)])
-                           (unless (ormap (lambda (i) (bound-identifier=? i pubovr-name)) l)
-                             ;; Either undefined or defined as syntax:
-                             (let ([stx-l (hash-ref stx-ht (syntax-e pubovr-name) null)])
-                               (if (ormap (lambda (i) (bound-identifier=? i pubovr-name)) stx-l)
-                                   (bad 
-                                    "method declared but defined as syntax"
-                                    pubovr-name)
-                                   (bad 
-                                    "method declared but not defined"
-                                    pubovr-name))))))
+                         (let ([l (hash-ref ht (syntax-e pubovr-name) null)]
+                               [stx-l (hash-ref stx-ht (syntax-e pubovr-name) null)])
+                           (cond ;; defined as value
+                                 [(ormap (lambda (i) (bound-identifier=? i pubovr-name)) l)
+                                  ;; check if abstract and fail if so
+                                  (when (memq pubovr-name abstract-names)
+                                    (bad "method declared as abstract but was defined"
+                                         pubovr-name))]
+                                 ;; defined as syntax
+                                 [(ormap (lambda (i) (bound-identifier=? i pubovr-name)) stx-l)
+                                  (bad "method declared but defined as syntax"
+                                       pubovr-name)]
+                                 ;; undefined
+                                 [else
+                                  (unless (memq pubovr-name abstract-names)
+                                    (bad "method declared as concrete but not defined"
+                                         pubovr-name))])))
                        local-method-names))
                     
                     ;; ---- Check that rename-inner doesn't have a non-final decl ---
@@ -1230,6 +1248,7 @@
                                                                  (append publics overrides augrides
                                                                          overments augments
                                                                          override-finals augment-finals
+                                                                         abstracts
                                                                          all-inherits)))]
                                     [(inherit-field-accessor ...) (generate-temporaries
                                                                    (map (lambda (id)
@@ -1372,6 +1391,7 @@
                                           [(rename-inner-name ...) (map lookup-localize-cdr rename-inners)]
                                           [(rename-inner-extra-name ...) (map lookup-localize-cdr rename-inner-extras)]
                                           [inherit-names (map lookup-localize-cdr all-inherits)]
+                                          [abstract-names (map lookup-localize-cdr abstracts)]
                                           [num-fields (datum->syntax
                                                        (quote-syntax here)
                                                        (+ (length private-field-names)
@@ -1435,6 +1455,7 @@
                                    `augment-final-names
                                    `augride-names
                                    `inherit-names
+                                   `abstract-names
                                    ;; Init arg names (in order)
                                    `init-names
                                    (quote init-mode)
@@ -1879,6 +1900,7 @@
                       method-width   ; total number of methods
                       method-ht      ; maps public names to vector positions
                       method-ids     ; reverse-ordered list of public method names
+                      abstract-ids   ; list of abstract method names
                       
                       methods        ; vector of methods (for external dynamic dispatch)
                       super-methods  ; vector of methods (for subclass super calls)
@@ -1956,6 +1978,7 @@
                        augment-final-names
                        augride-normal-names
                        inherit-names
+                       abstract-names
                        
                        init-args           ; list of symbols in order, or #f
                        init-mode           ; 'normal, 'stop, or 'list
@@ -1990,7 +2013,8 @@
     (check-still-unique name
                         (append pubment-names public-final-names public-normal-names
                                 overment-names override-final-names override-normal-names
-                                augment-names augment-final-names augride-normal-names)
+                                augment-names augment-final-names augride-normal-names
+                                abstract-names)
                         "method names"))
   
   ;; -- Create new class's name --
@@ -2002,12 +2026,12 @@
                               (format "derived-from-~a" s)
                               s))))]
          ;; Combine method lists
-         [public-names (append pubment-names public-final-names public-normal-names)]
+         [public-names (append pubment-names public-final-names public-normal-names abstract-names)]
          [override-names (append overment-names override-final-names override-normal-names)]
          [augride-names (append augment-names augment-final-names augride-normal-names)]
          [final-names (append public-final-names override-final-names augment-final-names)]
          [augonly-names (append pubment-names overment-names augment-names)]
-         ;; Mis utilities
+         ;; Misc utilities
          [no-new-methods? (null? public-names)]
          [no-method-changes? (and (null? public-names)
                                   (null? override-names)
@@ -2042,7 +2066,10 @@
           [super-method-ht (class-method-ht super)]
           [super-method-ids (class-method-ids super)]
           [super-field-ids (class-field-ids super)]
-          [super-field-ht (class-field-ht super)])
+          [super-field-ht (class-field-ht super)]
+          ;; Bind only super abstracts that are not concretized
+          [super-abstract-ids (remq* public-names
+                                     (class-abstract-ids super))])
       
       ;; Put new ids in table, with pos (replace field pos with accessor info later)
       (unless no-new-methods?
@@ -2054,6 +2081,16 @@
                        id
                        (for-class name)))
           (hash-set! method-ht id p)))
+
+      ;; Make sure new abstracts do not conflict with super methods
+      (unless no-new-methods?
+        (for ([id abstract-names])
+          (when (memq id super-method-ids)
+            (obj-error 'class* "superclass ~e already contains method: ~a~a"
+                       super
+                       id
+                       (for-class name)))))
+      
       ;; Keep check here for early failure, will add to hashtable later in this function.
       (unless no-new-fields?
         (for ([id (in-list public-field-names)])
@@ -2146,6 +2183,7 @@
                                       (string->symbol (format "interface:~a" name)))
                                      make-interface)]
                  [method-names (append (reverse public-names) super-method-ids)]
+                 [abstract-names (append abstract-names super-abstract-ids)]
                  [field-names (append public-field-names super-field-ids)]
                  [super-interfaces (cons (class-self-interface super) interfaces)]
                  [i (interface-make name super-interfaces #f method-names #f null)]
@@ -2179,7 +2217,7 @@
                                 i
                                 (let-values ([(struct: make- ? -ref -set) (make-struct-type 'insp #f 0 0 #f null inspector)])
                                   make-)
-                                method-width method-ht method-names
+                                method-width method-ht method-names abstract-names
                                 methods super-methods int-methods beta-methods meth-flags
                                 inner-projs dynamic-idxs dynamic-projs
                                 field-width field-pub-width field-ht field-names
@@ -2704,6 +2742,7 @@
                               method-width
                               method-ht
                               (class-method-ids cls)
+                              (class-abstract-ids cls)
                               
                               methods
                               super-methods
@@ -3482,7 +3521,7 @@
                  object<%>
                  void ; never inspectable
                  
-                 0 (make-hasheq) null
+                 0 (make-hasheq) null null
                  (vector) (vector) (vector) (vector) (vector)
 
                  (vector) (vector) (vector)
@@ -3610,6 +3649,9 @@
 (define-traced (do-make-object class by-pos-args named-args)
   (unless (class? class)
     (raise-type-error 'instantiate "class" class))
+  ;; TODO: make sure this error is the right one to raise
+  (unless (null? (class-abstract-ids class))
+    (raise-type-error 'instantiate "abstract class" class))
   (let ([o ((class-make-object class))])
     (trace-begin
      ;; Initialize it:
@@ -4526,6 +4568,7 @@
                         method-width
                         method-ht
                         (class-method-ids cls)
+                        (class-abstract-ids cls)
                         
                         meths
                         (class-super-methods cls)
