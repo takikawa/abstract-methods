@@ -1248,8 +1248,7 @@
                                                                  (append publics overrides augrides
                                                                          overments augments
                                                                          override-finals augment-finals
-                                                                         abstracts
-                                                                         all-inherits)))]
+                                                                         all-inherits abstracts)))]
                                     [(inherit-field-accessor ...) (generate-temporaries
                                                                    (map (lambda (id)
                                                                           (format "get-~a"
@@ -2083,13 +2082,16 @@
           (hash-set! method-ht id p)))
 
       ;; Make sure new abstracts do not conflict with super methods
+      ;; TODO: this check may be redundant
+      #;
       (unless no-new-methods?
         (for ([id abstract-names])
           (when (memq id super-method-ids)
             (obj-error 'class* "superclass ~e already contains method: ~a~a"
                        super
                        id
-                       (for-class name)))))
+                       (for-class name)))
+          (hash-set! method-ht id #t)))
       
       ;; Keep check here for early failure, will add to hashtable later in this function.
       (unless no-new-fields?
@@ -2138,7 +2140,8 @@
               [rename-inner-indices (get-indices method-ht "rename-inner" rename-inner-names)]
               [new-augonly-indices (get-indices method-ht "pubment" pubment-names)]
               [new-final-indices (get-indices method-ht "public-final" public-final-names)]
-              [new-normal-indices (get-indices method-ht "public" public-normal-names)])
+              [new-normal-indices (get-indices method-ht "public" public-normal-names)]
+              [new-abstract-indices (get-indices method-ht "abstract" abstract-names)])
           
           ;; -- Check that all interfaces are satisfied --
           (for-each
@@ -2183,8 +2186,8 @@
                                       (string->symbol (format "interface:~a" name)))
                                      make-interface)]
                  [method-names (append (reverse public-names) super-method-ids)]
-                 [abstract-names (append abstract-names super-abstract-ids)]
                  [field-names (append public-field-names super-field-ids)]
+                 [all-abstract-names (append abstract-names super-abstract-ids)]
                  [super-interfaces (cons (class-self-interface super) interfaces)]
                  [i (interface-make name super-interfaces #f method-names #f null)]
                  [methods (if no-method-changes?
@@ -2217,7 +2220,7 @@
                                 i
                                 (let-values ([(struct: make- ? -ref -set) (make-struct-type 'insp #f 0 0 #f null inspector)])
                                   make-)
-                                method-width method-ht method-names abstract-names
+                                method-width method-ht method-names all-abstract-names
                                 methods super-methods int-methods beta-methods meth-flags
                                 inner-projs dynamic-idxs dynamic-projs
                                 field-width field-pub-width field-ht field-names
@@ -2378,16 +2381,22 @@
                               (append new-augonly-indices new-final-indices new-normal-indices)))
                   
                   ;; -- Create method accessors --
-                  (let ([method-accessors (map (lambda (index)
-                                                 (let ([dyn-idx (vector-ref dynamic-idxs index)])
-                                                   (lambda (obj)
-                                                     (vector-ref (vector-ref (class-int-methods (object-ref obj))
-                                                                             index)
-                                                                 dyn-idx))))
-                                               (append new-normal-indices replace-normal-indices refine-normal-indices
-                                                       replace-augonly-indices refine-augonly-indices
-                                                       replace-final-indices refine-final-indices
-                                                       inherit-indices))])
+                  (let* ([method-accessors/no-abstracts
+                          (map (lambda (index)
+                                 (let ([dyn-idx (vector-ref dynamic-idxs index)])
+                                   (lambda (obj)
+                                     (vector-ref (vector-ref (class-int-methods (object-ref obj))
+                                                             index)
+                                                 dyn-idx))))
+                               (append new-normal-indices replace-normal-indices refine-normal-indices
+                                       replace-augonly-indices refine-augonly-indices
+                                       replace-final-indices refine-final-indices
+                                       inherit-indices))]
+                         [method-accessors (append method-accessors/no-abstracts
+                                                   (map (lambda (name)
+                                                          (lambda (obj)
+                                                            (error "Cannot call accessor on abstract method")))
+                                                        abstract-names))])
                     
                     ;; -- Get new methods and initializers --
                     (let-values ([(new-methods override-methods augride-methods init)
