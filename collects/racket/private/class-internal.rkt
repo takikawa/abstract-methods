@@ -1417,6 +1417,7 @@
                                                                                                        augrides)))]
                                           [(pubment-method ...) (map (find-method methods) (map car pubments))]
                                           [(public-final-method ...) (map (find-method methods) (map car public-finals))]
+                                          [(abstract-method ...) (map (find-method methods) (map car abstracts))]
                                           [mappings mappings]
                                           
                                           [exprs exprs]
@@ -1548,7 +1549,8 @@
                                                      [public-final-temp public-final-method]
                                                      ...)
                                               (values
-                                               (list pubment-temp ... public-final-temp ... . public-methods)
+                                               (list pubment-temp ... public-final-temp ...
+                                                     abstract-method ... . public-methods)
                                                (list . override-methods)
                                                (list . augride-methods)
                                                ;; Initialization
@@ -2066,9 +2068,7 @@
           [super-method-ids (class-method-ids super)]
           [super-field-ids (class-field-ids super)]
           [super-field-ht (class-field-ht super)]
-          ;; Bind only super abstracts that are not concretized
-          [super-abstract-ids (remq* public-names
-                                     (class-abstract-ids super))])
+          [super-abstract-ids (class-abstract-ids super)])
       
       ;; Put new ids in table, with pos (replace field pos with accessor info later)
       (unless no-new-methods?
@@ -2187,7 +2187,10 @@
                                      make-interface)]
                  [method-names (append (reverse public-names) super-method-ids)]
                  [field-names (append public-field-names super-field-ids)]
-                 [all-abstract-names (append abstract-names super-abstract-ids)]
+                 ;; Superclass abstracts that have not been concretized
+                 [remaining-abstract-names
+                  (append abstract-names
+                          (remq* override-names super-abstract-ids))]
                  [super-interfaces (cons (class-self-interface super) interfaces)]
                  [i (interface-make name super-interfaces #f method-names #f null)]
                  [methods (if no-method-changes?
@@ -2220,7 +2223,7 @@
                                 i
                                 (let-values ([(struct: make- ? -ref -set) (make-struct-type 'insp #f 0 0 #f null inspector)])
                                   make-)
-                                method-width method-ht method-names all-abstract-names
+                                method-width method-ht method-names remaining-abstract-names
                                 methods super-methods int-methods beta-methods meth-flags
                                 inner-projs dynamic-idxs dynamic-projs
                                 field-width field-pub-width field-ht field-names
@@ -2378,7 +2381,8 @@
                     (vector-copy! dynamic-idxs 0 (class-dynamic-idxs super))
                     (for-each (lambda (index)
                                 (vector-set! dynamic-idxs index 0))
-                              (append new-augonly-indices new-final-indices new-normal-indices)))
+                              (append new-augonly-indices new-final-indices
+                                      new-normal-indices new-abstract-indices)))
                   
                   ;; -- Create method accessors --
                   (let* ([method-accessors/no-abstracts
@@ -2425,7 +2429,8 @@
                                   (vector-set! inner-projs index identity)
                                   (vector-set! dynamic-idxs index 0)
                                   (vector-set! dynamic-projs index (vector identity)))
-                                (append new-augonly-indices new-final-indices new-normal-indices)
+                                (append new-augonly-indices new-final-indices
+                                        new-abstract-indices new-normal-indices)
                                 new-methods)
                       ;; Override old methods:
                       (for-each (lambda (index method id)
