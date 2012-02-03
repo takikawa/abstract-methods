@@ -263,6 +263,7 @@ interface @racket[(class->interface object%)], and is transparent
   (inherit maybe-renamed ...)
   (inherit/super maybe-renamed ...)
   (inherit/inner maybe-renamed ...)
+  (abstract maybe-renamed ...)
   (rename-super renamed ...)
   (rename-inner renamed ...)
   method-definition
@@ -447,6 +448,7 @@ a syntax error.
   [(inherit maybe-renamed ...) ("classinherit")]
   [(inherit/super maybe-renamed ...)  ("classinherit")]
   [(inherit/inner maybe-renamed ...) ("classinherit")]
+  [(abstract maybe-renamed ...) ("clmethoddefs")]
   [(rename-super renamed ...) ("classinherit")]
   [(rename-inner renamed ...) ("classinherit")]
 ]
@@ -636,9 +638,9 @@ external names.
 Each @racket[public], @racket[override], @racket[augment],
 @racket[pubment], @racket[overment], @racket[augride],
 @racket[public-final], @racket[override-final],
-@racket[augment-final], and @racket[private] clause in a class
-declares one or more method names. Each method name must have a
-corresponding @racket[_method-definition]. The order of
+@racket[augment-final], @racket[private], and @racket[abstract]
+clause in a class declares one or more method names. Each method name
+must have a corresponding @racket[_method-definition]. The order of
 @racket[public], @|etc|, clauses and their corresponding definitions
 (among themselves, and with respect to other clauses in the class)
 does not matter.
@@ -705,6 +707,12 @@ using the @racket[inner] form. The only difference between
 @racket[public-final] and @racket[pubment] without a corresponding
 @racket[inner] is that @racket[public-final] prevents the declaration
 of augmenting methods that would be ignored.
+
+A method declared with @racket[abstract] must be declared without
+an implementation. Subclasses may implement abstract methods via the
+@racket[override], @racket[overment], or @racket[override-final]
+forms. Any class that contains or inherits any abstract methods is
+considered abstract and cannot be instantiated.
 
 @defform*[[(super id arg ...)
            (super id arg ... . arg-list-expr)]]{
