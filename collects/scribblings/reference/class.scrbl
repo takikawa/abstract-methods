@@ -638,7 +638,7 @@ external names.
 Each @racket[public], @racket[override], @racket[augment],
 @racket[pubment], @racket[overment], @racket[augride],
 @racket[public-final], @racket[override-final],
-@racket[augment-final], @racket[private], and @racket[abstract]
+@racket[augment-final], and @racket[private]
 clause in a class declares one or more method names. Each method name
 must have a corresponding @racket[_method-definition]. The order of
 @racket[public], @|etc|, clauses and their corresponding definitions
