@@ -236,8 +236,8 @@ interface @racket[(class->interface object%)], and is transparent
 @defform/subs[
 #:literals (inspect init init-field field inherit-field init-rest init-rest
             public pubment public-final override override-final overment augment augride
-            augment-final private inherit inherit/super inherit/inner rename-super
-            rename-inner begin lambda case-lambda let-values letrec-values
+            augment-final private abstract inherit inherit/super inherit/inner
+            rename-super rename-inner begin lambda case-lambda let-values letrec-values
             define-values #%plain-lambda)
 (class* superclass-expr (interface-expr ...)
   class-clause
@@ -260,10 +260,10 @@ interface @racket[(class->interface object%)], and is transparent
   (augride maybe-renamed ...)
   (augment-final maybe-renamed ...)
   (private id ...)
+  (abstract id ...)
   (inherit maybe-renamed ...)
   (inherit/super maybe-renamed ...)
   (inherit/inner maybe-renamed ...)
-  (abstract maybe-renamed ...)
   (rename-super renamed ...)
   (rename-inner renamed ...)
   method-definition
@@ -445,10 +445,10 @@ a syntax error.
   [(augride maybe-renamed ...) ("clmethoddefs")]
   [(augment-final maybe-renamed ...) ("clmethoddefs")]
   [(private id ...) ("clmethoddefs")]
+  [(abstract id ...) ("clmethoddefs")]
   [(inherit maybe-renamed ...) ("classinherit")]
   [(inherit/super maybe-renamed ...)  ("classinherit")]
   [(inherit/inner maybe-renamed ...) ("classinherit")]
-  [(abstract maybe-renamed ...) ("clmethoddefs")]
   [(rename-super renamed ...) ("classinherit")]
   [(rename-inner renamed ...) ("classinherit")]
 ]
