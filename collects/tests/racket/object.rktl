@@ -812,15 +812,18 @@
 (test 3 'bt (send (send (new leaf% [number 7]) double 8) count))
 
 ;; calling abstracts from concrete methods
-(let ([foo% (class (class object%
-                     (super-new)
-                     (abstract foo)
-                     (define/public (bar)
-                       (add1 (foo))))
-              (super-new)
-              (define/override (foo) 10))])
-      (test 10 'abstract (send (new foo%) foo))
-      (test 11 'abstract (send (new foo%) bar)))
+(let* ([foo% (class (class object%
+                      (super-new)
+                      (abstract foo)
+                      (define/public (bar)
+                        (add1 (foo)))
+                      (define/public (baz) 15))
+               (super-new)
+               (define/override (foo) 10))]
+       [o (new foo%)])
+      (test 10 'abstract (send o foo))
+      (test 11 'abstract (send o bar))
+      (test 15 'abstract (send o baz)))
 
 ;; super calls to an abstract should raise an error
 (let ([foo% (class (class object%
@@ -832,14 +835,14 @@
 
 ;; failing to implement abstract methods
 (define bad-leaf% (class bt% (inherit-field number)))
-(define bad-leaf2% (class bt% (inherit-field number) 
+(define bad-leaf2% (class bt% (inherit-field number)
                      (define/override (sum) number)))
 
 (err/rt-test (new bad-leaf% [number 5]) exn:fail:object?)
 (err/rt-test (new bad-leaf2% [number 10]) exn:fail:object?)
 
 ;; cannot define publics over abstracts
-(err/rt-test (class bt% (inherit-field number) 
+(err/rt-test (class bt% (inherit-field number)
                (define/public (sum) number))
              exn:fail:object?)
 (err/rt-test (class bt% (inherit-field number)
