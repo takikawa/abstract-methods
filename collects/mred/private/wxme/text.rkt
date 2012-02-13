@@ -104,7 +104,6 @@
            set-modified
            get-default-style
            get-snip-data
-           set-snip-data
            read-snips-from-file
            on-paint
            on-focus
@@ -2187,6 +2186,8 @@
         (let ([snip (do-find-snip read-insert 'after)])
           (set-snip-data snip data)))
       (set! read-insert (+ read-insert addpos))))
+
+  (def/override (set-snip-data [snip% s] [editor-data% v]) (void))
 
   (define/public (paste-region-data data)
     (set-region-data read-insert-start read-insert data))
