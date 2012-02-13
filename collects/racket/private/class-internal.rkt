@@ -1424,7 +1424,7 @@
                                           [(public-final-method ...) (map (find-method methods) (map car public-finals))]
                                           ;; store a dummy method body that should never be called for abstracts
                                           [(abstract-method ...) (map (lambda (abs)
-                                                                        #'(lambda (this)
+                                                                        #'(lambda (this . rest)
                                                                             (obj-error 'class "Cannot call abstract method")))
                                                                       (map car abstracts))]
                                           [mappings mappings]
