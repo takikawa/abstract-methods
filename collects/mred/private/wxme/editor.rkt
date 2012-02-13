@@ -183,27 +183,23 @@
 
   ;; ----------------------------------------
 
-  (def/public (blink-caret) (void))
-
-  (def/public (size-cache-invalid) (void))
-  (def/public (locked-for-read?) #f)
-  (def/public (locked-for-write?) #f)
-  (def/public (locked-for-flow?) #f)
-
-  (def/public (resized) (void))
-  (def/public (recounted) (void))
-  (define/public (invalidate-bitmap-cache) (void))
-  (def/public (needs-update) (void))
-  (def/public (release-snip) (void))
-
-  (def/public (scroll-line-location) (void))
-  (def/public (num-scroll-lines) (void))
-  (def/public (find-scroll-line) (void))
+  (abstract blink-caret
+            size-cache-invalid
+            locked-for-read?
+            locked-for-write?
+            locked-for-flow?
+            resized
+            recounted
+            invalidate-bitmap-cache
+            needs-update
+            release-snip
+            scroll-line-location
+            num-scroll-lines
+            find-scroll-line)
 
   ;; ----------------------------------------
 
-  (define/public (on-event event) (void))
-  (define/public (on-char event) (void))
+  (abstract on-event on-char)
 
   (def/public (on-local-event [mouse-event% event])
     (unless (and s-keymap
@@ -222,9 +218,9 @@
                        #f)))
       (on-default-char event)))
 
-  (define/public (on-default-event event) (void))
-  (define/public (on-default-char event) (void))
-  
+  (abstract on-default-event
+            on-default-char)
+
   (def/public (on-focus [any? on?]) (void))
 
   ;; ----------------------------------------
@@ -238,15 +234,14 @@
     (when s-admin
       (init-new-admin)))
 
-  (def/public (setting-admin [(make-or-false editor-admin%) a]) (void))
-
-  (def/public (init-new-admin) (void))
+  (abstract setting-admin
+            init-new-admin)
 
   (def/public (get-admin) s-admin)
 
   ;; ----------------------------------------
 
-  (def/public (own-caret [any? ownit?]) (void))
+  (abstract own-caret)
 
   (def/public (do-own-caret [any? ownit?])
     (let ([ownint? (and ownit? #t)])
@@ -390,7 +385,7 @@
     (when s-admin
       (send s-admin update-cursor)))
 
-  (def/public (adjust-cursor [mouse-event% event]) (void))
+  (abstract adjust-cursor)
 
   ;; ----------------------------------------
 
@@ -408,7 +403,7 @@
     (send s-style-list new-named-style "Standard" (send s-style-list basic-style))
     (void))
 
-  (define/public (style-has-changed which) (void))
+  (abstract style-has-changed)
   
   (def/public (default-style-name) "Standard")
 
@@ -417,38 +412,37 @@
 
   ;; ----------------------------------------
 
-  (define/public (set-max-width w) (void))
-  (define/public (set-min-width v) (void))
+  (abstract set-max-width
+            set-min-width)
   (define/public (get-max-width) 0.0)
   (define/public (get-min-width) 0.0)
-  (define/public (set-min-height w) (void))
-  (define/public (set-max-height w) (void))
+  (abstract set-min-height
+            set-max-height)
   (define/public (get-min-height) 0.0)
   (define/public (get-max-height) 0.0)
 
   (define/public (find-first-snip) #f)
 
-  (define/public (get-extent) (void))
-  (define/public (get-descent) (void))
-  (define/public (get-space) (void))
-
-  (define/public (get-flattened-text) (void))
+  (abstract get-extent
+            get-descent
+            get-space
+            get-flattened-text)
 
   ;; ----------------------------------------
 
-  (define/public (clear) (void))
-  (define/public (cut ? time) (void))
-  (define/public (copy ? time) (void))
-  (define/public (paste time) (void))
-  (define/public (paste-x-selection time) (void))
-  (define/public (kill time) (void))
-  (define/public (select-all) (void))
-  (define/public (insert snip) (void))
-  (define/public (insert-paste-snip snip) (void))
-  (define/public (insert-paste-string str) (void))
-  (define/public (do-read-insert snip) (void))
-  (define/public (set-caret-owner snip focus) (void))
-  (define/public (read-from-file mf) #f)
+  (abstract clear
+            cut
+            copy
+            paste
+            paste-x-selection
+            kill
+            select-all
+            insert
+            insert-paste-snip
+            insert-paste-string
+            do-read-insert
+            set-caret-owner
+            read-from-file)
 
   (def/public (do-edit-operation [symbol? op] [any? [recursive? #t]] [exact-integer? [time 0]])
     (if (and recursive?
@@ -527,8 +521,8 @@
   ;; ----------------------------------------
 
   (def/public (get-snip-data [snip% s]) #f)
-  (def/public (set-snip-data [snip% s] [editor-data% v]) (void))
-  
+  (abstract set-snip-data)
+
   ;; ----------------------------------------
 
   (def/public (read-header-from-file [editor-stream-in% f] [string? header-name])
@@ -717,12 +711,12 @@
 
   ;; ----------------------------------------
 
-  (define/public (insert-port) (void))
-  (define/public (insert-file) (void))
-  (define/public (save-port) (void))
-  (define/public (load-file) (void))
-  (define/public (set-filename) (void))
-  (define/public (write-to-file) (void))
+  (abstract insert-port
+            insert-file
+            save-port
+            load-file
+            set-filename
+            write-to-file)
 
   (def/public (get-filename [(make-or-false box?) [temp #f]])
     (when temp (set-box! temp s-temp-filename?))
@@ -734,10 +728,10 @@
          (let ([w (send s-admin do-get-canvas)])
            (send w get-top-level))))
 
-  (define/public (do-begin-print) (void))
-  (define/public (print-to-dc) (void))
-  (define/public (do-end-print) (void))
-  (define/public (do-has-print-page?) (void))
+  (abstract do-begin-print
+            print-to-dc
+            do-end-print
+            do-has-print-page?)
 
   (define/private (run-printout
                    parent
@@ -934,8 +928,9 @@
           (set! changes-size size)
           (set! changes c))))
 
-  (def/public (begin-edit-sequence) (void))
-  (def/public (end-edit-sequence) (void))
+  (abstract begin-edit-sequence
+            end-edit-sequence)
+
   (def/public (in-edit-sequence?) #f)
   (def/public (refresh-delayed?) #f)
   (def/public (locations-computed?) #f)
@@ -1132,7 +1127,7 @@
            ;; no data => empty string
            (insert-paste-string str)))))
 
-  (def/public (copy-self) (void))
+  (abstract copy-self)
 
   (def/public (copy-self-to [editor<%> m])
     ;; copy style list
@@ -1215,7 +1210,7 @@
   
   ;; ----------------------------------------
 
-  (define/public (own-x-selection) (void))
+  (abstract own-x-selection)
 
   (define/public (do-own-x-selection on? force?)
     (if on?
@@ -1312,10 +1307,7 @@
         (send s-admin scroll-to localx localy w h refresh? bias)
         #f))
 
-  (def/public (refresh [real? left] [real? top] [nonnegative-real? width] [nonnegative-real? height]
-                       [caret-status? show-caret]
-                       [(make-or-false color%) bg-color])
-    (void))
+  (abstract refresh)
 
   (def/public (on-paint [any? pre?] [dc<%> dc]
                         [real? l] [real? t] [real? r] [real? b]
