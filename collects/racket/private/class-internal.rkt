@@ -3657,7 +3657,10 @@
     (raise-type-error 'instantiate "class" class))
   ;; make sure the class isn't abstract
   (unless (null? (class-abstract-ids class))
-    (obj-error 'instantiate "cannot instantiate abstract class ~a" class))
+    (obj-error 'instantiate
+               "cannot instantiate class ~a with abstract methods ~a"
+               class
+               (class-abstract-ids class)))
   (let ([o ((class-make-object class))])
     (trace-begin
      ;; Initialize it:
